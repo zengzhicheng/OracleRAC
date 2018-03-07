@@ -1,0 +1,806 @@
+<?xml version="1.0" ?>
+<cherrytree>
+	<node custom_icon_id="0" foreground="" is_bold="False" name="OracleRAC的搭建笔记" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520390597.89" unique_id="6">
+		<rich_text>环境：
+双节点： oracle_linux5.8_64， 双网卡
+存储： openfiler-2.3-x86-disc1
+数据库： p10404530_112030_Linux-x86-64_1of7
+p10404530_112030_Linux-x86-64_2of7
+p10404530_112030_Linux-x86-64_3of7 
+
+
+
+
+
+
+
+	</rich_text>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="一、规划IP、hostname、节点同步" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520390653.45" unique_id="11">
+			<rich_text>[root@node1 ~]# cat /etc/hosts
+127.0.0.1 localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1 localhost localhost.localdomain localhost6 localhost6.localdomain6
+#public ip
+</rich_text>
+			<rich_text foreground="#ff0000">1.1.1.1 node1.up.com node1
+1.1.1.2 node2.up.com node2
+</rich_text>
+			<rich_text>#private ip
+</rich_text>
+			<rich_text foreground="#ff0000">192.168.11.1node1-priv.up.com node1-priv
+192.168.11.2node2-priv.up.com node2-priv
+</rich_text>
+			<rich_text>#virtual ip
+</rich_text>
+			<rich_text foreground="#ff0000">1.1.1.10 node1-vip.up.com node1-vip
+1.1.1.20 node2-vip.up.com node2-vip
+</rich_text>
+			<rich_text>#storage ip
+</rich_text>
+			<rich_text foreground="#ff0000">1.1.1.3 openfiler</rich_text>
+			<rich_text> </rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="二、设置每个节点的主机名" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520390724.52" unique_id="20">
+			<rich_text>Node1：
+[root@node1 ~]# cat /etc/sysconfig/network
+NETWORKING=yes
+HOSTNAME=node1.up.com
+[root@node1 ~]# hostname </rich_text>
+			<rich_text foreground="#ff0000">node1.up.com</rich_text>
+			<rich_text> 
+
+Node2：
+[root@localhost ~]# cat /etc/sysconfig/network
+NETWORKING=yes
+HOSTNAME=node2.up.com
+[root@localhost ~]# hostname </rich_text>
+			<rich_text foreground="#ff0000">node2.up.com</rich_text>
+			<rich_text> </rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="三、配置每个节点的IP" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520390808.42" unique_id="21">
+			<rich_text>Node1：
+[root@node1 ~]# ifconfig eth0 | grep &quot;inet &quot;
+inet addr:1.1.1.1 Bcast:1.1.1.255 Mask:255.255.255.0
+[root@node1 ~]# ifconfig eth1 | grep &quot;inet &quot; 
+inet addr:192.168.11.1 Bcast:192.168.11.255 Mask:255.255.255.0 
+
+Node2：
+[root@node2 ~]# ifconfig eth0 | grep &quot;inet &quot;
+inet addr:1.1.1.2 Bcast:1.1.1.255 Mask:255.255.255.0
+[root@node2 ~]# ifconfig eth1 | grep &quot;inet &quot;
+inet addr:192.168.11.2 Bcast:192.168.11.255 Mask:255.255.255.0 </rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="四、公网IP需要指定网关" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520390937.83" unique_id="22">
+			<rich_text>Node1：
+[root@node1 ~]# cat /etc/sysconfig/network-scripts/ifcfg-eth0 | grep GATEWAY 
+GATEWAY=1.1.1.1 
+
+Node2：
+[root@node2 ~]# cat /etc/sysconfig/network-scripts/ifcfg-eth0 | grep GATEWAY
+GATEWAY=1.1.1.1
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="五、配置时间同步" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520391119.33" unique_id="23">
+			<rich_text>Node1：
+[root@node1 ~]# cat /etc/sysconfig/ntpd
+# Drop root to id 'ntp:ntp' by default.
+OPTIONS=&quot;</rich_text>
+			<rich_text foreground="#ff0000">-x </rich_text>
+			<rich_text>-u ntp:ntp -p /var/run/ntpd.pid -g&quot; (-x 10g 不需要加) 
+# Set to 'yes' to sync hw clock after successful ntpdate
+SYNC_HWCLOCK=no
+# Additional options for ntpdate
+NTPDATE_OPTIONS=&quot;&quot; 
+
+[root@node1 ~]# vim /etc/ntp.conf
+# Hosts on local network are less restricted.
+restrict 1.1.1.0 mask 255.255.255.0 nomodify notrap 加上
+# Use public servers from the pool.ntp.org project.
+# Please consider joining the pool (http://www.pool.ntp.org/join.html).
+#server 0.rhel.pool.ntp.org 注释掉
+#server 1.rhel.pool.ntp.org
+#server 2.rhel.pool.ntp.org 
+
+[root@node1 ~]# /etc/init.d/ntpd start
+Starting ntpd: [ OK ]
+[root@node1 ~]# chkconfig ntpd on 
+
+Node2：
+[root@node2 ~]# cat /etc/sysconfig/ntpd
+# Drop root to id 'ntp:ntp' by default.
+OPTIONS=&quot;</rich_text>
+			<rich_text foreground="#ff0000">-x </rich_text>
+			<rich_text>-u ntp:ntp -p /var/run/ntpd.pid -g&quot;
+# Set to 'yes' to sync hw clock after successful ntpdate
+SYNC_HWCLOCK=no
+# Additional options for ntpdate
+NTPDATE_OPTIONS=&quot;&quot;
+
+ [root@node2 ~]# vim /etc/ntp.conf
+#server 0.rhel.pool.ntp.org 注释
+#server 1.rhel.pool.ntp.org
+#server 2.rhel.pool.ntp.org
+server node1 指向 node1
+[root@node2 ~]# /etc/init.d/ntpd start 都需要启动 ntp
+[root@node2 ~]# chkconfig ntpd on
+
+[root@node2 ~]# ntpdate 1.1.1.1
+step time server 1.1.1.1 offset 1.136856 sec
+[root@node2 ~]# date ; ssh 1.1.1.1 date
+Tue Jun 24 17:33:33 CST 2017
+The authenticity of host '1.1.1.1 (1.1.1.1)' can't be established.
+RSA key fingerprint is 3f:61:13:af:53:95:65:ce:7e:54:7e:dc:1c:fa:c6:51.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '1.1.1.1' (RSA) to the list of known hosts.
+root@1.1.1.1's password:
+Tue Jun 24 17:33:39 CST 2017
+
+ 
+
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="六、配置好YUM" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520391316.19" unique_id="24">
+			<rich_text>先挂载本系统盘（系统的镜像）
+Node2：
+[root@node2 mnt]# cat /etc/yum.repos.d/iso.repo 
+[rhel6-server]
+name=zzc.upupup.com
+baseurl=file:///mnt/Server
+enabled=1
+gpgcheck=0 
+
+[root@node2 mnt]# yum repolist
+Loaded plugins: product-id, refresh-packagekit, security, subscription-manager
+This system is not registered to Red Hat Subscription Management. You can use
+subscription-manager to register.
+repo id repo name status
+rhel6-server zzc.upupup.com 2,472
+
+[root@node2 mnt]# scp /etc/yum.repos.d/1.repo 1.1.1.1:/etc/yum.repos.d/
+
+
+Node1：
+[root@node1 ~]# yum repolist
+Loaded plugins: product-id, refresh-packagekit, security, subscription-manager
+This system is not registered to Red Hat Subscription Management. You can use
+subscription-manager to register.
+repo id repo name status
+rhel6-server zzc.upupup.com 2,472
+
+
+两个节点都需要安装以下的包：
+libXtst-devel.x86_64 libXtst-devel.i686 libstdc++-devel.i686 kernel-headers glibc-devel.i686 glibc-devel.x86_64 gnome-icon-theme dmz-cursor-themes sgml-common libaio.i686 libaio.x86_64 libaio-devel.x86_64 libaio-devel.i686 ncurses-devel.x86_64 ncurses-devel.i686 elfutils-libelf-devel.x86_64 elfutils-libelf-devel.i686 compat-gcc-34 compat-gcc-34-c++ libXxf86misc.i686 libXxf86vm.i686 libXt.i686 libXt.x86_64 libXmu.x86_64 libXmu.i686 mpfr cpp xorg-x11-xauth compat-gcc-34-c++ libdaemon avahi avahi-glib shared-mime-info libIDL-devel.i686 libIDL-devel.x86_64 ORBit2-devel.i686 ORBit2-devel.x86_64 GConf2-devel.i686 GConf2-devel.x86_64 gnome-vfs2-devel.i686 gnome-vfs2-devel.x86_64 libbonobo-devel.i686 libbonobo-devel.x86_64 libtool-ltdl.i686 libtool-ltdl.x86_64 unixODBC-devel.i686 unixODBC-devel.x86_64 gtk2-engines.i686 gtk2-engines.x86_64 libmcpp mcpp xorg-x11-server-utils libXv-devel.i686 libXv-devel.x86_64 ConsoleKit-x11 xorg-x11-xinit libXp-devel.i686 libXp-devel.x86_64 libXxf86dga libdmx xorg-x11-utils compat-db43.i686 compat-db43.x86_64 ppl.i686 ppl.x86_64 cloog-ppl.i686 cloog-ppl.x86_64 gcc gcc-c++ compat-libstdc++-33.i686 compat-libstdc++-33.x86_64 compat-db.i686 compat-db.x86_64 gnome-themes system-icon-theme system-gnome-theme readline-devel.i686 readline-devel.x86_64 libgnome-devel.i686 libgnome-devel.x86_64 binutils-devel.i686 binutils-devel.x86_64 elfutils-devel.i686 elfutils-devel.x86_64 numactl-devel.i686 numactl-devel.x86_64 sysstat libaio compat-libstdc++ libaio-devel libgcc libstdc++ libstdc++-devel unixODBC unixODBC-devel pdksh</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="七、安装DNS服务" prog_lang="custom-colors" readonly="False" tags="" ts_creation="0.0" ts_lastsave="1520391701.41" unique_id="25">
+			<rich_text>Node1：
+[root@node1 ~]# yum -y install bind bind-chroot
+[root@node1 ~]# cd /var/named/chroot/etc/
+[root@node1 etc]# touch named.conf
+[root@node1 etc]# cat named.conf
+options {
+directory &quot;/var/named&quot;;
+};
+</rich_text>
+			<rich_text foreground="#ff0000">zone &quot;.&quot; IN {
+type hint;
+file &quot;/dev/null&quot; ;
+};
+如果不加， 在后期检查 dns 解析存在域名时候， 会报错响应时间超过 15000ms，
+要想快速响应， 不去找根域就好 如果还报错 1500ms 可以在客户文件中添加
+options rotate
+options timeout:2
+options attempts:5
+</rich_text>
+			<rich_text>zone &quot;up.com&quot; {
+type master;
+file &quot;up.com.zone&quot;;
+};
+zone &quot;1.1.1.in-addr.arpa&quot; {
+type master;
+file &quot;1.1.1.zone&quot;;
+} 
+zone &quot;11.168.192.in-addr.arpa&quot; {
+type master;
+file &quot;192.168.11.zone&quot;;
+};
+
+[root@node1 etc]# cd ../var/named/
+[root@node1 named]# touch up.com.zone
+[root@node1 etc]# cp ../var/named/up.com.zone ../var/named/1.1.1.zone
+[root@node1 etc]# cp ../var/named/up.com.zone ../var/named/192.168.11.zone
+[root@node1 etc]# cat ../var/named/up.com.zone
+$TTL 7200
+@ IN SOA dns.up.com. root.up.com. (
+2014062401
+1H
+15M
+1W
+1D
+) @
+IN NS dns.up.com.
+node1 IN A 1.1.1.1
+node2 IN A 1.1.1.2
+node1-vip IN A 1.1.1.10
+node2-vip IN A 1.1.1.20
+node1-priv IN A 192.168.11.1
+node2-priv IN A 192.168.11.2
+</rich_text>
+			<rich_text foreground="#ff0000">scan IN A 1.1.1.251
+scan IN A 1.1.1.252
+scan IN A 1.1.1.253
+
+</rich_text>
+			<rich_text>[root@node1 etc]# cat ../var/named/1.1.1.zone
+$TTL 7200
+@ IN SOA dns.up.com. root.up.com. (
+2014062401
+1H
+15M
+1W
+1D
+) @
+IN NS dns.up.com.
+1 IN PTR node1.up.com.
+2 IN PTR node2.up.com. 
+10 IN PTR node1-vip.up.com.
+20 IN PTR node2-vip.up.com.
+251 IN PTR scan.up.com.
+252 IN PTR scan.up.com.
+253 IN PTR scan.up.com.
+
+[root@node1 etc]# cat ../var/named/192.168.11.zone
+$TTL 7200
+@ IN SOA dns.up.com. root.up.com. (
+2014062401
+1H
+15M
+1W
+1D
+) @
+IN NS dns.up.com.
+1 IN PTR node1-priv.up.com.
+2 IN PTR node2-priv.up.com.
+Node1 测试 
+[root@node1 etc]# cat /etc/resolv.conf
+search up.com
+nameserver 1.1.1.1
+
+[root@node1 etc]# nslookup </rich_text>
+			<rich_text foreground="#ff0000">scan.up.com
+</rich_text>
+			<rich_text>Server: 1.1.1.1
+Address: 1.1.1.1#53
+Name: scan.up.com
+Address: 1.1.1.251
+Name: scan.up.com
+Address: 1.1.1.252
+Name: scan.up.com
+Address: 1.1.1.253
+
+[root@node1 etc]# nslookup </rich_text>
+			<rich_text foreground="#ff0000">1.1.1.251
+</rich_text>
+			<rich_text>Server: 1.1.1.1
+Address: 1.1.1.1#53 
+251.1.1.1.in-addr.arpa name = </rich_text>
+			<rich_text foreground="#ff0000">scan.up.com.
+
+</rich_text>
+			<rich_text>[root@node1 etc]# nslookup </rich_text>
+			<rich_text foreground="#ff0000">1.1.1.252
+</rich_text>
+			<rich_text>Server: 1.1.1.1
+Address: 1.1.1.1#53
+252.1.1.1.in-addr.arpa name = </rich_text>
+			<rich_text foreground="#ff0000">scan.up.com.
+
+</rich_text>
+			<rich_text>[root@node1 etc]# nslookup </rich_text>
+			<rich_text foreground="#ff0000">1.1.1.253
+</rich_text>
+			<rich_text>Server: 1.1.1.1
+Address: 1.1.1.1#53
+253.1.1.1.in-addr.arpa name = </rich_text>
+			<rich_text foreground="#ff0000">scan.up.com.
+</rich_text>
+			<rich_text>Node2 测试：
+
+[root@node2 mnt]# cat /etc/resolv.conf
+search up.com
+nameserver 1.1.1.1
+
+[root@node2 mnt]# nslookup scan.up.com
+Server: 1.1.1.1
+Address: 1.1.1.1#53
+Name: scan.up.com
+Address: 1.1.1.252
+Name: scan.up.com
+Address: 1.1.1.253
+Name: scan.up.com
+Address: 1.1.1.251
+
+[root@node2 mnt]# nslookup 1.1.1.251
+Server: 1.1.1.1
+Address: 1.1.1.1#53
+251.1.1.1.in-addr.arpa name = scan.up.com.
+
+[root@node2 mnt]# nslookup 1.1.1.252
+Server: 1.1.1.1
+Address: 1.1.1.1#53
+252.1.1.1.in-addr.arpa name = scan.up.com.
+
+[root@node2 mnt]# nslookup 1.1.1.253
+Server: 1.1.1.1
+Address: 1.1.1.1#53
+253.1.1.1.in-addr.arpa name = scan.up.com. 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="八、创建用户、组、口令" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520391976.75" ts_lastsave="1520391996.45" unique_id="1">
+			<rich_text>Node1：
+[root@node1 etc]# groupadd -g 1000 oinstall
+[root@node1 etc]# groupadd -g 1001 dba
+[root@node1 etc]# groupadd -g 1002 oper
+[root@node1 etc]# groupadd -g 1003 asmdba
+[root@node1 etc]# groupadd -g 1004 asmadmin
+[root@node1 etc]# groupadd -g 1005 asmoper
+[root@node1 etc]# useradd -u 1000 -g oinstall -G dba,oper,asmdba oracle
+[root@node1 etc]# useradd -u 1002 -g oinstall -G dba,asmadmin,asmdba,asmoper grid
+[root@node1 etc]# echo &quot;grid&quot; | passwd --stdin grid
+Changing password for user grid.
+passwd: all authentication tokens updated successfully.
+[root@node1 etc]# echo &quot;oracle&quot; | passwd --stdin oracle
+Changing password for user oracle.
+passwd: all authentication tokens updated successfully. 
+
+Node2：
+[root@node2 mnt]# groupadd -g 1000 oinstall
+[root@node2 mnt]# groupadd -g 1001 dba
+[root@node2 mnt]# groupadd -g 1002 oper
+[root@node2 mnt]# groupadd -g 1003 asmdba
+[root@node2 mnt]# groupadd -g 1004 asmadmin
+[root@node2 mnt]# groupadd -g 1005 asmoper
+[root@node2 mnt]# useradd -u 1000 -g oinstall -G dba,oper,asmdba oracle
+[root@node2 mnt]# useradd -u 1002 -g oinstall -G dba,asmadmin,asmoper,asmdba grid
+[root@node2 mnt]# echo &quot;oracle&quot; | passwd --stdin oracle
+Changing password for user oracle.
+passwd: all authentication tokens updated successfully.
+[root@node2 mnt]# echo &quot;grid&quot; | passwd --stdin grid
+Changing password for user grid. 
+passwd: all authentication tokens updated successfully 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="九、配置用户环境变量" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520392055.96" ts_lastsave="1520392123.94" unique_id="2">
+			<rich_text>Node1：
+[root@node1 ~]# cat /home/grid/.bashrc 
+export ORACLE_BASE=/u01/app/grid
+export ORACLE_HOME=/u01/app/11.2.0/grid
+export PATH=$ORACLE_HOME/bin:$PATH
+export ORACLE_SID=</rich_text>
+			<rich_text foreground="#ff0000">+ASM1
+</rich_text>
+			<rich_text>export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+export LANG=en_US
+alias sqlplus='rlwrap sqlplus'
+alias lsnrctl='rlwrap lsnrctl'
+alias asmcmd='rlwrap asmcmd' 
+
+[root@node1 ~]# cat /home/oracle/.bashrc 
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=$ORACLE_BASE/product/11.2.0/db_1
+export ORACLE_SID=</rich_text>
+			<rich_text foreground="#ff0000">racdb1
+</rich_text>
+			<rich_text>export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+export PATH=$ORACLE_HOME/bin:$PATH
+export LANG=en_US
+alias sqlplus='rlwrap sqlplus'
+alias lsnrctl='rlwrap lsnrctl'
+alias rman='rlwrap rman'
+alias dgmgrl='rlwrap dgmgrl 
+
+Node2：
+[root@node2 ~]# cat /home/grid/.bashrc
+export ORACLE_BASE=/u01/app/grid
+export ORACLE_HOME=/u01/app/11.2.0/grid
+export PATH=$ORACLE_HOME/bin:$PATH
+export ORACLE_SID=</rich_text>
+			<rich_text foreground="#ff0000">+ASM2</rich_text>
+			<rich_text> 
+export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+export LANG=en_US
+alias sqlplus='rlwrap sqlplus'
+alias lsnrctl='rlwrap lsnrctl'
+alias asmcmd='rlwrap asmcmd' 
+
+[root@node2 ~]# cat /home/oracle/.bashrc
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME=$ORACLE_BASE/product/11.2.0/db_1
+export ORACLE_SID=</rich_text>
+			<rich_text foreground="#ff0000">racdb2
+</rich_text>
+			<rich_text>export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+export PATH=$ORACLE_HOME/bin:$PATH
+export LANG=en_US
+alias sqlplus='rlwrap sqlplus'
+alias lsnrctl='rlwrap lsnrctl'
+alias rman='rlwrap rman'
+alias dgmgrl='rlwrap dgmgrl' 
+
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十、创建必要目录" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520392538.52" ts_lastsave="1520392546.05" unique_id="3">
+			<rich_text>Node1：
+[root@node1 ~]# mkdir -p /u01/app/grid
+[root@node1 ~]# mkdir -p /u01/app/11.2.0/grid
+[root@node1 ~]# chown -R grid.oinstall /u01/
+[root@node1 ~]# mkdir /u01/app/oracle
+[root@node1 ~]# chown -R oracle:oinstall /u01/app/oracle/
+[root@node1 ~]# chmod -R 775 /u01/ 
+
+Node2：
+[root@node2 ~]# mkdir -p /u01/app/grid
+[root@node2 ~]# mkdir -p /u01/app/11.2.0/grid
+[root@node2 ~]# chown grid.oinstall /u01/ -R
+[root@node2 ~]# mkdir /u01/app/oracle
+[root@node2 ~]# chown oracle.oinstall /u01/app/oracle/ -R
+[root@node2 ~]# chmod 775 -R /u01/ 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十一、配置内核参数" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520393060.82" ts_lastsave="1520393105.08" unique_id="4">
+			<rich_text>Node1：
+[root@node1 ~]# cat /etc/sysctl.conf
+kernel.shmmax = 4294967296
+kernel.shmmni = 4096
+kernel.shmall = 2097152
+kernel.sem = 250 32000 100 128
+fs.file-max = 6815744
+fs.aio-max-nr = 1048576
+net.ipv4.ip_local_port_range = 9000 65500
+net.core.rmem_default = 262144
+net.core.rmem_max = 4194304
+net.core.wmem_default = 262144
+net.core.wmem_max = 1048586
+[root@node1 ~]# sysctl -p
+[root@node1 ~]# scp /etc/sysctl.conf 1.1.1.2:/etc/
+root@1.1.1.2's password:
+sysctl.conf 100% 1459 1.4KB/s 00:00
+
+Node2：
+[root@node2 ~]# sysctl -p
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十二、修改shell" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520393149.67" ts_lastsave="1520393163.63" unique_id="5">
+			<rich_text>Node1 ：
+[root@node1 ~]# vim /etc/security/limits.conf
+grid soft nofile 65536
+grid hard nofile 65536
+grid soft nproc 16384
+grid hard nproc 16384
+grid soft stack 10240
+oracle soft nofile 65536
+oracle hard nofile 65536
+oracle soft nproc 16384
+oracle hard nproc 16384
+oracle soft stack 10240
+[root@node1 ~]# scp !$ 1.1.1.2:!$
+scp /etc/security/limits.conf 1.1.1.2:/etc/security/limits.conf
+root@1.1.1.2's password:
+limits.conf 100% 2013 2.0KB/s 00:00
+
+Node2 ：
+[root@node2 ~]# cat /etc/security/limits.conf
+grid soft nofile 65536
+grid hard nofile 65536
+grid soft nproc 16384
+grid hard nproc 16384
+oracle soft nofile 65536
+oracle hard nofile 65536
+oracle soft nproc 16384
+oracle hard nproc 16384 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十三、设置grid用户ssh等效性" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520393216.72" ts_lastsave="1520393227.69" unique_id="7">
+			<rich_text>Node1：
+[root@node1 ~]# su - grid
+[grid@node1 ~]$ ssh-keygen -t rsa 
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/grid/.ssh/id_rsa):
+Created directory '/home/grid/.ssh'.
+Enter passphrase (empty for no passphrase): 私钥不加密
+Enter same passphrase again:
+Your identification has been saved in /home/grid/.ssh/id_rsa.
+Your public key has been saved in /home/grid/.ssh/id_rsa.pub.
+The key fingerprint is:
+ae:83:bf:3e:7a:6f:cf:0d:cd:3a:48:16:af:38:c9:4d grid@node2.up.com 
+
+[grid@node1 ~]$ ssh-keygen -t dsa
+Generating public/private dsa key pair.
+Enter file in which to save the key (/home/grid/.ssh/id_dsa):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /home/grid/.ssh/id_dsa.
+Your public key has been saved in /home/grid/.ssh/id_dsa.pub.
+The key fingerprint is:
+2d:a7:b4:bb:9c:74:14:1a:61:99:2c:25:a9:01:45:15 grid@node2.up.com 
+
+[grid@node1 ~]$ cd /home/grid/.ssh/
+[grid@node1 .ssh]$ ls
+id_dsa id_dsa.pub id_rsa id_rsa.pub 
+
+[grid@node1 .ssh]$ ssh-copy-id -i id_rsa.pub 1.1.1.2
+The authenticity of host '1.1.1.2 (1.1.1.2)' can't be established.
+RSA key fingerprint is 0b:9a:60:89:df:e9:02:0c:b9:1a:16:6c:16:72:17:3c.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '1.1.1.2' (RSA) to the list of known hosts.
+grid@1.1.1.2's password:
+/home/grid/.bashrc: line 9: [root@node1: command not found
+Now try logging into the machine, with &quot;ssh '1.1.1.2'&quot;, and check in:
+.ssh/authorized_keys
+to make sure we haven't added extra keys that you weren't expecting.
+
+[grid@node1 .ssh]$ ssh-copy-id -i id_dsa.pub 1.1.1.2
+/home/grid/.bashrc: line 9: [root@node1: command not found
+Now try logging into the machine, with &quot;ssh '1.1.1.2'&quot;, and check in:
+.ssh/authorized_keys
+to make sure we haven't added extra keys that you weren't expecting. 
+
+Node2：
+[root@node2 ~]# su - grid
+[grid@node2 ~]$ cd .ssh/
+[grid@node2 .ssh]$ ls
+authorized_keys
+[grid@node2 .ssh]$ ssh-keygen -t rsa
+[grid@node2 .ssh]$ ssh-keygen -t dsa
+[grid@node2 .ssh]$ ls
+authorized_keys id_dsa id_dsa.pub id_rsa id_rsa.pub 
+
+[grid@node2 .ssh]$ cat *.pub &gt;&gt; authorized_keys      自己登陆自己也不需要密码 
+
+[grid@node2 .ssh]$ scp authorized_keys 1.1.1.1:/home/grid/.ssh/
+grid@1.1.1.1's password:
+authorized_keys 100% 2012 2.0KB/s 00:00
+
+Node2 测试：
+[grid@node2 ~]$ ssh node1.up.com date 不在需要密码， 输入 yes 仅限第一次
+[grid@node2 ~]$ ssh node2.up.com date
+[grid@node2 ~]$ ssh node2-priv.up.com date
+[grid@node2 ~]$ ssh node1-priv.up.com date
+[grid@node2 ~]$ ssh node1-priv date
+[grid@node2 ~]$ ssh node2-priv date
+[grid@node2 ~]$ ssh node2 date
+[grid@node2 ~]$ ssh node1 date 
+
+Node1 测试：
+[grid@node1 .ssh]$ ssh node1.up.com date
+[grid@node1 .ssh]$ ssh node2.up.com date
+[grid@node1 .ssh]$ ssh node2-priv.up.com date
+[grid@node1 .ssh]$ ssh node1-priv.up.com date
+[grid@node1 .ssh]$ ssh node1-priv date
+[grid@node1 .ssh]$ ssh node2-priv date
+[grid@node1 .ssh]$ ssh node2 date
+[grid@node1 .ssh]$ ssh node1 date 
+
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十四、设置oracle用户ssh等效性" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520393429.6" ts_lastsave="1520393446.2" unique_id="8">
+			<rich_text>Node1：
+[root@node1 ~]# su - oracle
+[oracle@node1 ~]$ ssh-keygen -t rsa
+[oracle@node1 ~]$ ssh-keygen -t dsa
+[oracle@node1 ~]$ ssh-keygen -t rsa
+[oracle@node1 ~]$ ssh-keygen -t dsa
+[oracle@node1 ~]$ cd /home/oracle/.ssh/
+[oracle@node1 .ssh]$ ssh-copy-id -i id_rsa.pub 1.1.1.2
+[oracle@node1 .ssh]$ ssh-copy-id -i id_dsa.pub 1.1.1.2 
+
+Node2：
+[root@node2 ~]# su - oracle
+[oracle@node2 ~]$ ssh-keygen -t rsa
+[oracle@node2 ~]$ ssh-keygen -t dsa
+[oracle@node2 ~]$ cd /home/oracle/.ssh/
+[oracle@node2 .ssh]$ cat *.pub &gt;&gt; authorized_keys
+[oracle@node2 .ssh]$ scp authorized_keys 1.1.1.1:/home/oracle/.ssh/ 
+
+Node2 测试：
+[oracle@node2 .ssh]$ ssh node1 date
+[oracle@node2 .ssh]$ ssh node2 date
+[oracle@node2 .ssh]$ ssh node2-priv date
+[oracle@node2 .ssh]$ ssh node1-priv date
+[oracle@node2 .ssh]$ ssh node1-priv.up.com date
+[oracle@node2 .ssh]$ ssh node2-priv.up.com date
+[oracle@node2 .ssh]$ ssh node2.up.com date
+[oracle@node2 .ssh]$ ssh node1.up.com date 
+
+Node1 测试：
+[oracle@node1 .ssh]$ ssh node1 date
+[oracle@node1 .ssh]$ ssh node2 date
+[oracle@node1 .ssh]$ ssh node2-priv date
+[oracle@node1 .ssh]$ ssh node1-priv date
+[oracle@node1 .ssh]$ ssh node1-priv.up.com date
+[oracle@node1 .ssh]$ ssh node2-priv.up.com date
+[oracle@node1 .ssh]$ ssh node2.up.com date
+[oracle@node1 .ssh]$ ssh node1.up.com date 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十五、发现存储、分区，绑定裸设备（ASM）" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520393512.0" ts_lastsave="1520393533.36" unique_id="9">
+			<rich_text>存储服务器 1.1.1.3 用的是 openfiler 工作做的， 只分了一个 20G 左右的分区 
+
+Node1： 发现存储
+[root@node1 ~]# yum -y install iscsi-initiator-utils
+[root@node1 ~]# rm -rf /var/lib/iscsi/* 删除缓存
+[root@node1 ~]# iscsiadm -m discovery -t st -p 1.1.1.3:3260
+Starting iscsid: [ OK ]
+1.1.1.3:3260,1 iqn.2006-01.com.openfiler:iscsi
+[root@node1 ~]# /etc/init.d/iscsi start
+Starting iscsi: [ OK ]
+[root@node1 ~]# chkconfig iscsi on
+[root@node1 ~]# fdisk -l
+Disk /dev/sda: 26.8 GB, 26843545600 bytes /dev/sda 信息略
+Disk /dev/sdb: 16.1 GB, 16106127360 bytes
+64 heads, 32 sectors/track, 15360 cylinders
+Units = cylinders of 2048 * 512 = 1048576 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x00000000
+
+Node2： 发现存储
+[root@node2 ~]# yum -y install iscsi-initiator-utils
+[root@node2 ~]# iscsiadm -m discovery -t st -p 1.1.1.3:3260
+Starting iscsid: [ OK ]
+1.1.1.3:3260,1 iqn.2006-01.com.openfiler:iscsi
+[root@node2 ~]# /etc/init.d/iscsi start
+Starting iscsi: [ OK ] 
+[root@node2 ~]# fdisk -l 
+
+
+Node1： 分区
+[root@node1 ~]# fdisk /dev/sdb
+增加 4 个分区 2 个 2g 2 个 5g
+[root@node1 ~]# fdisk -l /dev/sdb
+Disk /dev/sdb: 16.1 GB, 16106127360 bytes
+64 heads, 32 sectors/track, 15360 cylinders
+Units = cylinders of 2048 * 512 = 1048576 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x00000000
+Device Boot Start End Blocks Id System
+/dev/sdb1 1 1908 1953776 83 Linux
+/dev/sdb2 1909 3816 1953792 83 Linux
+/dev/sdb3 3817 8585 4883456 83 Linux
+/dev/sdb4 8586 15360 6937600 5 Extended
+/dev/sdb5 8586 13354 4883440 83 Linux
+[root@node1 ~]# partprobe /dev/sdb
+[root@node1 ~]# ll /dev/sdb*
+brw-rw----. 1 root disk 8, 16 Jun 25 11:40 /dev/sdb
+brw-rw----. 1 root disk 8, 17 Jun 25 11:40 /dev/sdb1
+brw-rw----. 1 root disk 8, 18 Jun 25 11:40 /dev/sdb2
+brw-rw----. 1 root disk 8, 19 Jun 25 11:40 /dev/sdb3
+brw-rw----. 1 root disk 8, 20 Jun 25 11:40 /dev/sdb4
+brw-rw----. 1 root disk 8, 21 Jun 25 11:40 /dev/sdb5
+
+Node2： 分区
+[root@node2 ~]# partprobe /dev/sdb
+[root@node2 ~]# ll /dev/sdb*
+brw-rw----. 1 root disk 8, 16 Jun 25 11:47 /dev/sdb
+brw-rw----. 1 root disk 8, 17 Jun 25 11:47 /dev/sdb1
+brw-rw----. 1 root disk 8, 18 Jun 25 11:47 /dev/sdb2
+brw-rw----. 1 root disk 8, 19 Jun 25 11:47 /dev/sdb3
+brw-rw----. 1 root disk 8, 20 Jun 25 11:47 /dev/sdb4
+brw-rw----. 1 root disk 8, 21 Jun 25 11:47 /dev/sdb5
+
+Node1： 绑定裸设备
+[root@node1 ~]# cat /etc/udev/rules.d/60-raw.rules
+ACTION==&quot;add&quot;, KERNEL==&quot;sdb1&quot;, RUN+=&quot;/bin/raw /dev/raw/raw1 %N&quot;
+ACTION==&quot;add&quot;, KERNEL==&quot;sdb2&quot;, RUN+=&quot;/bin/raw /dev/raw/raw2 %N&quot;
+ACTION==&quot;add&quot;, KERNEL==&quot;sdb3&quot;, RUN+=&quot;/bin/raw /dev/raw/raw3 %N&quot;
+ACTION==&quot;add&quot;, KERNEL==&quot;sdb4&quot;, RUN+=&quot;/bin/raw /dev/raw/raw4 %N&quot;
+KERNEL==&quot;raw[1]&quot;, MODE=&quot;0660&quot;, GROUP=&quot;asmadmin&quot;, OWNER=&quot;grid&quot;
+KERNEL==&quot;raw[2]&quot;, MODE=&quot;0660&quot;, GROUP=&quot;asmadmin&quot;, OWNER=&quot;grid&quot;
+KERNEL==&quot;raw[3]&quot;, MODE=&quot;0660&quot;, GROUP=&quot;asmadmin&quot;, OWNER=&quot;grid&quot;
+KERNEL==&quot;raw[4]&quot;, MODE=&quot;0660&quot;, GROUP=&quot;asmadmin&quot;, OWNER=&quot;grid&quot;
+[root@node1 ~]# start_udev
+Starting udev: [ OK ]
+[root@node1 ~]# ll /dev/raw/raw*
+crw-rw----. 1 grid asmadmin 162, 1 Jun 25 12:04 /dev/raw/raw1
+crw-rw----. 1 grid asmadmin 162, 2 Jun 25 12:04 /dev/raw/raw2
+crw-rw----. 1 grid asmadmin 162, 3 Jun 25 12:04 /dev/raw/raw3
+crw-rw----. 1 grid asmadmin 162, 4 Jun 25 12:04 /dev/raw/raw4
+[root@node1 ~]# scp /etc/udev/rules.d/60-raw.rules 1.1.1.2:/etc/udev/rules.d/60-raw.rules
+root@1.1.1.2's password:
+60-raw.rules 100% 820 0.8KB/s 00:00
+
+Node2 绑定裸设备：
+[root@node2 ~]# start_udev
+Starting udev: [ OK ]
+[root@node2 ~]# ll /dev/raw/raw*
+crw-rw----. 1 grid asmadmin 162, 1 Jun 25 12:06 /dev/raw/raw1
+crw-rw----. 1 grid asmadmin 162, 2 Jun 25 12:06 /dev/raw/raw2
+crw-rw----. 1 grid asmadmin 162, 3 Jun 25 12:06 /dev/raw/raw3
+crw-rw----. 1 grid asmadmin 162, 4 Jun 25 12:06 /dev/raw/raw4
+
+UDEV 规则 2
+# /sbin/scsi_id -g -u -d /dev/sdb
+1ATA_HARDDISK_VBbfd37c1c-9b7c9336
+KERNEL==&quot;sd?1&quot;, BUS==&quot;scsi&quot;, PROGRAM==&quot;/sbin/scsi_id -g -u
+-d /dev/$parent&quot;,
+RESULT==&quot;1ATA_HARDDISK_VBbfd37c1c-9b7c9336&quot;,
+SYMLINK=&quot;asmdisk1&quot;,OWNER=&quot;oracle&quot;, GROUP=&quot;dba&quot;,
+MODE=&quot;0640&quot;
+SYMLINK 也可以换成 NAME 转变了
+也需要分区
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十六、grid安装前最后检查" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520393663.8" ts_lastsave="1520394816.05" unique_id="10">
+			<rich_text>[root@node1 /]# unzip p10404530_112030_Linux-x86-64_3of7.zip 
+[grid@node1 grid]$ cd /grid/
+[grid@node1 grid]$ ./runcluvfy.sh stage -pre crsinst -n node1,node2 -fixup -verbose 
+检查结果输出是否有错，有的话及时修改然后重跑一遍脚本
+
+[root@node1 /]# yum -y install sysstat
+[root@node1 /]# yum -y install libaio-devel
+
+安装 cvu
+#CVUQDISK_GRP=oinstall; export CVUQDISK_GRP
+#rpm -ivh cvuqdisk-1.0.9-1.rpm
+后面检查也会让装的 
+
+
+
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十七、安装grid软件" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520394816.05" ts_lastsave="1520403217.63" unique_id="12">
+			<rich_text>[root@node1 ~]# xhost +
+access control disabled, clients can connect from any host
+[root@node1 ~]# su - grid
+[grid@node1 ~]$ /grid/runInstaller 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十八、Oracle软件的安装" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520403331.21" ts_lastsave="1520403339.66" unique_id="13">
+			<rich_text>[root@node1 /]# unzip p10404530_112030_Linux-x86-64_1of7.zip
+[root@node1 /]# unzip p10404530_112030_Linux-x86-64_2of7.zip
+[root@node1 /]# chown oracle.oinstall -R /database/
+[root@node1 /]# xhost +
+[root@node1 /]# su - oracl
+[oracle@node1 ~]$ /database/runInstaller 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="十九、磁盘组的创建" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520403373.54" ts_lastsave="1520403387.01" unique_id="14">
+			<rich_text>[grid@node1 ~]$ asmca 
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="二十、网络监听的搭建" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520403416.72" ts_lastsave="1520403437.91" unique_id="15">
+			<rich_text>[oracle@node2 ~]$ \lsnrctl status
+LSNRCTL for Linux: Version 11.2.0.3.0 - Production on 27-JUN-2014 00:01:54
+Copyright (c) 1991, 2011, Oracle. All rights reserved.
+Connecting to (ADDRESS=(PROTOCOL=tcp)(HOST=)(PORT=1521))
+STATUS of the LISTENER
+------------------------
+Alias LISTENER
+Version TNSLSNR for Linux: Version 11.2.0.3.0 - Production
+Start Date 26-JUN-2014 17:42:01
+Uptime 0 days 6 hr. 19 min. 52 sec
+Trace Level off
+Security ON: Local OS Authentication
+SNMP OFF
+Listener Parameter File /u01/app/11.2.0/grid/network/admin/listener.ora
+Listener Log File /u01/app/oracle/diag/tnslsnr/node2/listener/alert/log.xml
+Listening Endpoints Summary...
+(DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(KEY=LISTENER)))
+(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=1.1.1.2)(PORT=1521)))
+(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=1.1.1.20)(PORT=1521)))
+Services Summary...
+Service &quot;+ASM&quot; has 1 instance(s).
+Instance &quot;+ASM2&quot;, status READY, has 1 handler(s) for this service...
+The command completed successfully
+
+</rich_text>
+		</node>
+		<node custom_icon_id="0" foreground="" is_bold="False" name="二十一、Oracle数据库的安装" prog_lang="custom-colors" readonly="False" tags="" ts_creation="1520403458.47" ts_lastsave="1520403471.09" unique_id="16">
+			<rich_text>[root@node1 ~]# su - oracle
+[root@node1 11.2.0]# cd /u01/app/
+[root@node1 app]# chmod 755 -R oracle /
+两个节点如不做上面步骤， dbca 在最后一步会报错， 找不到目录或者权限不够
+[oracle@node1 ~]$ dbca 
+</rich_text>
+		</node>
+	</node>
+</cherrytree>
